@@ -39,12 +39,16 @@ jobs:
               curl \
               git \
               libasound2-dev \
+              libass-dev \
+              libcurl4-openssl-dev \
               libdbus-1-dev \
+              libdrm-dev \
               libegl1-mesa-dev \
               libgl-dev \
               libgles2-mesa-dev \
               libpulse-dev \
               libssl-dev \
+              libwayland-dev \
               libwebp-dev \
               libx11-dev \
               libxcursor-dev \
@@ -58,7 +62,8 @@ jobs:
               libxxf86vm-dev \
               ninja-build \
               pkg-config \
-              tar
+              tar \
+              wayland-protocols
           run: |
             set -eux
 
@@ -75,22 +80,38 @@ jobs:
             mkdir -p /opt
             tar -C /opt -xzf "${WORK}/z96a-mpv-rkmpp.tar.gz"
 
+            # Fix pkg-config paths and compatibility symlink
+            find "${PREFIX}/lib/pkgconfig" -name "*.pc" -exec sed -i "s|/tmp/z96a-mpv-rkmpp/prefix|${PREFIX}|g" {} +
+            mkdir -p /tmp/z96a-mpv-rkmpp
+            ln -snf "${PREFIX}" /tmp/z96a-mpv-rkmpp/prefix
+
             export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig:${PREFIX}/share/pkgconfig:${PKG_CONFIG_PATH:-}"
             export LD_LIBRARY_PATH="${PREFIX}/lib:${LD_LIBRARY_PATH:-}"
             export PATH="${PREFIX}/bin:${PATH}"
 
             pkg-config --modversion mpv
+            pkg-config --cflags mpv
+            pkg-config --libs mpv
 
             # 2. Clone wiliwili with submodules
             git clone --recursive --depth 1 https://github.com/xfangfang/wiliwili.git "${WORK}/wiliwili"
 
             # 3. Configure and build wiliwili
             cd "${WORK}/wiliwili"
+
             cmake -B build -G Ninja \
               -DCMAKE_BUILD_TYPE=Release \
               -DPLATFORM_DESKTOP=ON \
               -DINSTALL=ON \
-              -DCMAKE_INSTALL_PREFIX=/opt/wiliwili
+              -DCMAKE_INSTALL_PREFIX=/opt/wiliwili \
+              -DCMAKE_INSTALL_RPATH="/opt/wiliwili/lib:/opt/z96a-mpv-rkmpp/lib" \
+              -DCMAKE_PREFIX_PATH="${PREFIX}" \
+              -DHOMEBREW_MPV="${PREFIX}" \
+              -DMPV_INCLUDE_DIR="${PREFIX}/include" \
+              -DMPV_LIBRARY="${PREFIX}/lib/libmpv.so" \
+              -DUSE_SYSTEM_CURL=ON \
+              -DBRLS_UNITY_BUILD=ON \
+              -DCMAKE_UNITY_BUILD_BATCH_SIZE=16
 
             ninja -C build -j"$(nproc)"
             DESTDIR="${PACKAGE}" ninja -C build install
@@ -122,4 +143,5 @@ jobs:
             artifacts/z96a-wiliwili.tar.gz \
             artifacts/SHA256SUMS \
             --title "wiliwili for Sunniwell Z96A (RK3568)" \
-            --notes "Native wiliwili build for Sunniwell Z96A RK3568 with Rockchip MPP hardware decoding via z96a-mpv-rkmpp." || true
+            --notes "Native wiliwili build for Sunniwell Z96A RK3568 with Rockchip MPP hardware decoding via z96a-mpv-rkmpp." \
+            --clobber || true
