@@ -170,9 +170,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          gh release upload v1.0.0 \
+            artifacts/z96a-wiliwili.tar.gz \
+            artifacts/SHA256SUMS \
+            --clobber || \
           gh release create v1.0.0 \
             artifacts/z96a-wiliwili.tar.gz \
             artifacts/SHA256SUMS \
             --title "wiliwili for Sunniwell Z96A (RK3568)" \
-            --notes "Native wiliwili build for Sunniwell Z96A RK3568 with Rockchip MPP hardware decoding via z96a-mpv-rkmpp." \
-            --clobber || true
+            --notes "Native wiliwili build for Sunniwell Z96A RK3568 with Rockchip MPP hardware decoding via z96a-mpv-rkmpp." || true
