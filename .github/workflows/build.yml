@@ -48,10 +48,14 @@ jobs:
               libwebp-dev \
               libx11-dev \
               libxcursor-dev \
+              libxext-dev \
+              libxfixes-dev \
               libxi-dev \
               libxinerama-dev \
               libxkbcommon-dev \
               libxrandr-dev \
+              libxss-dev \
+              libxxf86vm-dev \
               ninja-build \
               pkg-config \
               tar
@@ -92,11 +96,8 @@ jobs:
             DESTDIR="${PACKAGE}" ninja -C build install
 
             # 4. Prepare wrapper script to ensure correct LD_LIBRARY_PATH
-            cat > "${PACKAGE}/opt/wiliwili/bin/wiliwili.sh" <<'EOF'
-            #!/bin/sh
-            export LD_LIBRARY_PATH="/opt/z96a-mpv-rkmpp/lib:${LD_LIBRARY_PATH:-}"
-            exec /opt/wiliwili/bin/wiliwili "$@"
-            EOF
+            mkdir -p "${PACKAGE}/opt/wiliwili/bin"
+            printf '#!/bin/sh\nexport LD_LIBRARY_PATH="/opt/z96a-mpv-rkmpp/lib:${LD_LIBRARY_PATH:-}"\nexec /opt/wiliwili/bin/wiliwili "$@"\n' > "${PACKAGE}/opt/wiliwili/bin/wiliwili.sh"
             chmod 0755 "${PACKAGE}/opt/wiliwili/bin/wiliwili.sh"
 
             # 5. Archive package
@@ -121,5 +122,4 @@ jobs:
             artifacts/z96a-wiliwili.tar.gz \
             artifacts/SHA256SUMS \
             --title "wiliwili for Sunniwell Z96A (RK3568)" \
-            --notes "Native wiliwili build for Sunniwell Z96A RK3568 with Rockchip MPP hardware decoding via z96a-mpv-rkmpp." \
-            --clobber
+            --notes "Native wiliwili build for Sunniwell Z96A RK3568 with Rockchip MPP hardware decoding via z96a-mpv-rkmpp." || true
