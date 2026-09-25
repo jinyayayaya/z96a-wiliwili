@@ -1,0 +1,125 @@
+name: Build wiliwili for RK3568
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  build:
+    name: AArch64 Bookworm wiliwili build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Build in an AArch64 container
+        uses: uraimo/run-on-arch-action@v3
+        with:
+          arch: aarch64
+          distro: bookworm
+          githubToken: ${{ github.token }}
+          setup: |
+            mkdir -p "${PWD}/artifacts"
+          dockerRunArgs: |
+            --volume "${PWD}/artifacts:/artifacts"
+          install: |
+            apt-get update
+            apt-get install -y --no-install-recommends \
+              build-essential \
+              ca-certificates \
+              cmake \
+              curl \
+              git \
+              libasound2-dev \
+              libdbus-1-dev \
+              libegl1-mesa-dev \
+              libgl-dev \
+              libgles2-mesa-dev \
+              libpulse-dev \
+              libssl-dev \
+              libwebp-dev \
+              libx11-dev \
+              libxcursor-dev \
+              libxi-dev \
+              libxinerama-dev \
+              libxkbcommon-dev \
+              libxrandr-dev \
+              ninja-build \
+              pkg-config \
+              tar
+          run: |
+            set -eux
+
+            export WORK=/tmp/wiliwili-build
+            export PREFIX=/opt/z96a-mpv-rkmpp
+            export PACKAGE=/tmp/wiliwili-package
+
+            rm -rf "${WORK}" "${PACKAGE}"
+            mkdir -p "${WORK}" "${PACKAGE}"
+
+            # 1. Download and install prebuilt z96a-mpv-rkmpp runtime
+            echo "Fetching z96a-mpv-rkmpp runtime..."
+            curl -sSL "https://github.com/jinyayayaya/z96a-mpv-rkmpp/releases/download/v1.0.0/z96a-mpv-rkmpp.tar.gz" -o "${WORK}/z96a-mpv-rkmpp.tar.gz"
+            mkdir -p /opt
+            tar -C /opt -xzf "${WORK}/z96a-mpv-rkmpp.tar.gz"
+
+            export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig:${PREFIX}/share/pkgconfig:${PKG_CONFIG_PATH:-}"
+            export LD_LIBRARY_PATH="${PREFIX}/lib:${LD_LIBRARY_PATH:-}"
+            export PATH="${PREFIX}/bin:${PATH}"
+
+            pkg-config --modversion mpv
+
+            # 2. Clone wiliwili with submodules
+            git clone --recursive --depth 1 https://github.com/xfangfang/wiliwili.git "${WORK}/wiliwili"
+
+            # 3. Configure and build wiliwili
+            cd "${WORK}/wiliwili"
+            cmake -B build -G Ninja \
+              -DCMAKE_BUILD_TYPE=Release \
+              -DPLATFORM_DESKTOP=ON \
+              -DINSTALL=ON \
+              -DCMAKE_INSTALL_PREFIX=/opt/wiliwili
+
+            ninja -C build -j"$(nproc)"
+            DESTDIR="${PACKAGE}" ninja -C build install
+
+            # 4. Prepare wrapper script to ensure correct LD_LIBRARY_PATH
+            cat > "${PACKAGE}/opt/wiliwili/bin/wiliwili.sh" <<'EOF'
+#!/bin/sh
+export LD_LIBRARY_PATH="/opt/z96a-mpv-rkmpp/lib:${LD_LIBRARY_PATH:-}"
+exec /opt/wiliwili/bin/wiliwili "$@"
+EOF
+            chmod 0755 "${PACKAGE}/opt/wiliwili/bin/wiliwili.sh"
+
+            # 5. Archive package
+            mkdir -p /artifacts
+            tar -C "${PACKAGE}" -czf /artifacts/z96a-wiliwili.tar.gz opt
+            (cd /artifacts && sha256sum z96a-wiliwili.tar.gz) > /artifacts/SHA256SUMS
+
+      - name: Upload bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: z96a-wiliwili
+          path: artifacts/*
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish GitHub Release
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create v1.0.0 \
+            artifacts/z96a-wiliwili.tar.gz \
+            artifacts/SHA256SUMS \
+            --title "wiliwili for Sunniwell Z96A (RK3568)" \
+            --notes "Native wiliwili build for Sunniwell Z96A RK3568 with Rockchip MPP hardware decoding via z96a-mpv-rkmpp." \
+            --clobber
