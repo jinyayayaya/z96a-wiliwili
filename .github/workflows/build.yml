@@ -44,6 +44,7 @@ jobs:
               libdbus-1-dev \
               libdrm-dev \
               libegl1-mesa-dev \
+              libgbm-dev \
               libgl-dev \
               libgles2-mesa-dev \
               libpulse-dev \
@@ -57,13 +58,15 @@ jobs:
               libxi-dev \
               libxinerama-dev \
               libxkbcommon-dev \
+              libxpresent-dev \
               libxrandr-dev \
               libxss-dev \
               libxxf86vm-dev \
               ninja-build \
               pkg-config \
               tar \
-              wayland-protocols
+              wayland-protocols \
+              zlib1g-dev
           run: |
             set -eux
 
@@ -80,8 +83,9 @@ jobs:
             mkdir -p /opt
             tar -C /opt -xzf "${WORK}/z96a-mpv-rkmpp.tar.gz"
 
-            # Fix pkg-config paths and compatibility symlink
+            # Fix pkg-config prefix and strip private requirements to avoid transitive resolution issues
             find "${PREFIX}/lib/pkgconfig" -name "*.pc" -exec sed -i "s|/tmp/z96a-mpv-rkmpp/prefix|${PREFIX}|g" {} +
+            find "${PREFIX}/lib/pkgconfig" -name "*.pc" -exec sed -i '/^Requires\.private:/d' {} +
             mkdir -p /tmp/z96a-mpv-rkmpp
             ln -snf "${PREFIX}" /tmp/z96a-mpv-rkmpp/prefix
 
@@ -98,6 +102,12 @@ jobs:
 
             # 3. Configure and build wiliwili
             cd "${WORK}/wiliwili"
+
+            if [ -f library/borealis/library/lib/extern/glfw/CMake/GenerateMappings.cmake ]; then
+              cmake -P library/borealis/library/lib/extern/glfw/CMake/GenerateMappings.cmake \
+                library/borealis/library/lib/extern/glfw/src/mappings.h.in \
+                library/borealis/library/lib/extern/glfw/src/mappings.h || true
+            fi
 
             cmake -B build -G Ninja \
               -DCMAKE_BUILD_TYPE=Release \
