@@ -20,6 +20,14 @@ jobs:
       - name: Check out repo
         uses: actions/checkout@v4
 
+      - name: Cache ccache
+        uses: actions/cache@v4
+        with:
+          path: .ccache
+          key: ccache-aarch64-wiliwili-${{ github.sha }}
+          restore-keys: |
+            ccache-aarch64-wiliwili-
+
       - name: Build in an AArch64 container
         uses: uraimo/run-on-arch-action@v3
         with:
@@ -27,14 +35,16 @@ jobs:
           distro: bookworm
           githubToken: ${{ github.token }}
           setup: |
-            mkdir -p "${PWD}/artifacts"
+            mkdir -p "${PWD}/artifacts" "${PWD}/.ccache"
           dockerRunArgs: |
             --volume "${PWD}/artifacts:/artifacts"
+            --volume "${PWD}/.ccache:/root/.cache/ccache"
           install: |
             apt-get update
             apt-get install -y --no-install-recommends \
               build-essential \
               ca-certificates \
+              ccache \
               cmake \
               curl \
               git \
@@ -44,9 +54,13 @@ jobs:
               libdbus-1-dev \
               libdrm-dev \
               libegl1-mesa-dev \
+              libfontconfig-dev \
+              libfreetype-dev \
+              libfribidi-dev \
               libgbm-dev \
               libgl-dev \
               libgles2-mesa-dev \
+              libharfbuzz-dev \
               libpulse-dev \
               libssl-dev \
               libwayland-dev \
@@ -60,7 +74,9 @@ jobs:
               libxkbcommon-dev \
               libxpresent-dev \
               libxrandr-dev \
+              libxrender-dev \
               libxss-dev \
+              libxv-dev \
               libxxf86vm-dev \
               ninja-build \
               pkg-config \
@@ -69,6 +85,10 @@ jobs:
               zlib1g-dev
           run: |
             set -eux
+
+            export CCACHE_DIR=/root/.cache/ccache
+            export PATH="/usr/lib/ccache:${PATH}"
+            ccache -s || true
 
             export WORK=/tmp/wiliwili-build
             export PREFIX=/opt/z96a-mpv-rkmpp
@@ -115,6 +135,7 @@ jobs:
               -DINSTALL=ON \
               -DCMAKE_INSTALL_PREFIX=/opt/wiliwili \
               -DCMAKE_INSTALL_RPATH="/opt/wiliwili/lib:/opt/z96a-mpv-rkmpp/lib" \
+              -DCMAKE_EXE_LINKER_FLAGS="-Wl,-rpath-link,${PREFIX}/lib" \
               -DCMAKE_PREFIX_PATH="${PREFIX}" \
               -DHOMEBREW_MPV="${PREFIX}" \
               -DMPV_INCLUDE_DIR="${PREFIX}/include" \
