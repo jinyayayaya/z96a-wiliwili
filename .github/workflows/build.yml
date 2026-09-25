@@ -93,10 +93,10 @@ jobs:
 
             # 4. Prepare wrapper script to ensure correct LD_LIBRARY_PATH
             cat > "${PACKAGE}/opt/wiliwili/bin/wiliwili.sh" <<'EOF'
-#!/bin/sh
-export LD_LIBRARY_PATH="/opt/z96a-mpv-rkmpp/lib:${LD_LIBRARY_PATH:-}"
-exec /opt/wiliwili/bin/wiliwili "$@"
-EOF
+            #!/bin/sh
+            export LD_LIBRARY_PATH="/opt/z96a-mpv-rkmpp/lib:${LD_LIBRARY_PATH:-}"
+            exec /opt/wiliwili/bin/wiliwili "$@"
+            EOF
             chmod 0755 "${PACKAGE}/opt/wiliwili/bin/wiliwili.sh"
 
             # 5. Archive package
