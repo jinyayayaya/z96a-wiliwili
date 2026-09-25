@@ -147,9 +147,9 @@ jobs:
             ninja -C build -j"$(nproc)"
             DESTDIR="${PACKAGE}" ninja -C build install
 
-            # 4. Prepare wrapper script to ensure correct LD_LIBRARY_PATH
+            # 4. Prepare wrapper script to ensure correct LD_LIBRARY_PATH and Mesa GL override
             mkdir -p "${PACKAGE}/opt/wiliwili/bin"
-            printf '#!/bin/sh\nexport LD_LIBRARY_PATH="/opt/z96a-mpv-rkmpp/lib:${LD_LIBRARY_PATH:-}"\nexec /opt/wiliwili/bin/wiliwili "$@"\n' > "${PACKAGE}/opt/wiliwili/bin/wiliwili.sh"
+            printf '#!/bin/sh\nexport LD_LIBRARY_PATH="/opt/z96a-mpv-rkmpp/lib:${LD_LIBRARY_PATH:-}"\nexport MESA_GL_VERSION_OVERRIDE=3.3\nexport MESA_GLSL_VERSION_OVERRIDE=330\nexec /opt/wiliwili/bin/wiliwili "$@"\n' > "${PACKAGE}/opt/wiliwili/bin/wiliwili.sh"
             chmod 0755 "${PACKAGE}/opt/wiliwili/bin/wiliwili.sh"
 
             # 5. Archive package
