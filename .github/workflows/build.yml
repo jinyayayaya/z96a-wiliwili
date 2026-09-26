@@ -118,7 +118,7 @@ jobs:
             pkg-config --libs mpv
 
             # 2. Clone wiliwili with submodules
-            git clone --recursive --depth 1 --branch live-hevc-preference https://github.com/jinyayayaya/wiliwili.git "${WORK}/wiliwili"
+            git clone --recursive --depth 1 --branch ci/gpu-idle-limit https://github.com/jinyayayaya/wiliwili.git "${WORK}/wiliwili"
 
             # 3. Configure and build wiliwili
             cd "${WORK}/wiliwili"
