@@ -141,6 +141,7 @@ jobs:
               -DMPV_INCLUDE_DIR="${PREFIX}/include" \
               -DMPV_LIBRARY="${PREFIX}/lib/libmpv.so" \
               -DUSE_SYSTEM_CURL=ON \
+              -DUSE_EGL=ON \
               -DBRLS_UNITY_BUILD=ON \
               -DCMAKE_UNITY_BUILD_BATCH_SIZE=16
 
